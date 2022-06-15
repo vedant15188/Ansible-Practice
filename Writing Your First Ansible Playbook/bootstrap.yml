@@ -1,0 +1,52 @@
+---
+# Part 1 playbook for all hosts
+- hosts: all
+  become: true
+  tasks:
+    - name: edit hosts file
+      lineinfile:
+        path: /etc/hosts
+        line: "169.168.0.1 ansible.xyzcorp.com"
+
+    - name: install elinks
+      package:
+        name: elinks
+        state: latest
+
+    - name: create audit user
+      user: 
+        name: xyzcorp_audit
+        state: present
+
+    - name: copy motd file
+      copy:
+        src: /home/ansible/motd
+        dest: /etc/motd
+
+    - name: copy issue file
+      copy:
+        src: /home/ansible/issue
+        dest: /etc/issue
+
+# Part 2 playbook for network servers
+- hosts: network
+  become: yes
+  tasks:
+    - name: install netcat
+      yum:
+        name: nmap-ncat
+        state: latest
+
+    - name:  create network user
+      user:
+        name: xyzcorp_network
+        state: present
+
+# Part 3 playbook for sysadmin servers
+- hosts: sysadmin
+  become: yes
+  tasks:
+    - name: copy tarball
+      copy:
+        src: /home/ansible/scripts.tgz
+        dest: /mnt/storage/
