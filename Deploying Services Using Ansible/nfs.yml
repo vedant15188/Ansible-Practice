@@ -1,0 +1,59 @@
+---
+- hosts: nfs
+  become: yes
+  vars:
+    share_path: /mnt/nfsroot
+  tasks:
+    - name: install nfs
+      yum:
+        name: nfs-utils
+        state: latest
+
+    - name: start and enable nfs server
+      service:
+        name: nfs-server
+        state: started
+        enabled: yes
+    
+    - name: configure exports
+      template:
+        src: /home/ansible/exports.j2
+        dest: /etc/exports
+      notify: update nfs
+    
+  handlers:
+    - name: update nfs exports
+      command: exportfs -a
+      listen: update nfs
+
+# Play for remote hosts group
+
+- hosts: remote
+  become: yes
+  vars:
+    # Run "ansible all -m ansible.builtin.setup" command to get the JSON output which explains the vars in the playbook. 
+    # Check ansible_stats_all.json for better understanding
+    nfs_ip: "{{ hostvars['nfs']['ansible_default_ipv4']['address'] }}"
+    nfs_hostname: "{{ hostvars['nfs']['ansible_hostname'] }}"
+  vars_files:
+    - /home/ansible/user-list.txt
+  tasks:
+    - name: configure hosts file
+      template:
+        src: /home/ansible/etc.hosts.j2
+        dest: /etc/hosts
+
+    - name: get file status
+      stat:
+        path: /otp/user-agreement.txt
+      register: filestat
+
+    - name: debug info
+      debug:
+        var: filestat
+
+    - name: create users
+      user:
+        name: "{{ item }}"
+      when: filestat.stat.exists
+      loop: "{{ users }}"
